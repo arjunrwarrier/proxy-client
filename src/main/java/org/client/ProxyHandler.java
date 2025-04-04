@@ -11,7 +11,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class ProxyHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(ProxyHandler.class);
-    private static final String PROXY_SERVER_HOST = "localhost";
+    private static final String PROXY_SERVER_HOST = "proxy-server";
     private static final int PROXY_SERVER_PORT = 9090;
 //    Instead of handling requests in separate threads, to process requests one at a time
     private static final BlockingQueue<Socket> requestQueue = new LinkedBlockingQueue<>();
