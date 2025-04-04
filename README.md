@@ -5,7 +5,7 @@ This project sets up a proxy client running in a Docker container, which acts as
 TO SETUP A RUNNING ENVIRONMENT USING DOCKER
 ------------------------------
 ### 1. clone the project
-### 2. Docker build
+### 2. Docker build, maven packaging will be done inside the image creation
 
 `docker build -t proxy-client:latest .`
 
