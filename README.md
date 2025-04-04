@@ -15,7 +15,7 @@ TO SETUP A RUNNING ENVIRONMENT USING DOCKER
   
 ### 4.Run both containers in same network exposing required ports
 
-  `docker run -d --name proxy-client --network=proxy-network -p 9090:9090 proxy-client:latest`
+  `docker run -d --name proxy-client --network=proxy-network -p 8080:8080 proxy-client:latest`
   
 ### 5.Use curl command to check if the proxy is working, check logs of both server and client containers
 
