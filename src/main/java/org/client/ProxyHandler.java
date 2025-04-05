@@ -85,6 +85,7 @@ public class ProxyHandler implements Runnable {
                 out.write(responseLine + "\r\n");
             }
             out.flush();
+            proxySocket.close();
             logger.info("Completed HTTP request");
         } catch (IOException e) {
             logger.error("Error forwarding HTTP request: {}", e.getMessage());
