@@ -4,7 +4,7 @@ This project sets up a proxy client running in a Docker container, which acts as
 
 TO SETUP A RUNNING ENVIRONMENT USING DOCKER
 ------------------------------
-## SIMPLY USING DOCKER COMPOSE NO OTHER STEPS REQUIRED :  https://github.com/arjunrwarrier/proxy-docker-compose
+## SIMPLY USING DOCKER COMPOSE NO OTHER STEPS REQUIRED    https://github.com/arjunrwarrier/proxy-docker-compose
 ### 1. clone the project
 ### 2. Docker build, maven packaging will be done inside the image creation
 
