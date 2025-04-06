@@ -14,10 +14,10 @@ public class ProxyHandler implements Runnable {
     private static final String PROXY_SERVER_HOST = "proxy-server";
     private static final int PROXY_SERVER_PORT = 9090;
 //    Instead of handling requests in separate threads, to process requests one at a time
-    private static final BlockingQueue<Socket> requestQueue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<Socket> requestQueue;
 
-    public ProxyHandler(Socket clientSocket) {
-        requestQueue.add(clientSocket);
+    public ProxyHandler(BlockingQueue<Socket> requestQueue) {
+        this.requestQueue = requestQueue;
     }
 
 
@@ -50,15 +50,14 @@ public class ProxyHandler implements Runnable {
             if (tokens.length < 2) return;
 
             String method = tokens[0];
-            String target = tokens[1];
 
-            if (method.equals("CONNECT")) {
-                logger.info("IN CONNECT");
-                handleConnect(target, out, clientSocket);
-            } else {
-                logger.info("IN HTTP");
-                forwardHttpRequest(requestLine, in, out);
+            if (method.equalsIgnoreCase("CONNECT")) {
+                logger.warn("Received HTTPS CONNECT request. Not supported. Closing connection.");
             }
+            logger.info("IN HTTP");
+            logger.info("Received request: {}",requestLine);
+            forwardHttpRequest(requestLine, in, out);
+
         } catch (IOException e) {
             logger.error("Exception processing request: {}", e.getMessage());
         }
@@ -85,7 +84,6 @@ public class ProxyHandler implements Runnable {
                 out.write(responseLine + "\r\n");
             }
             out.flush();
-            proxySocket.close();
             logger.info("Completed HTTP request");
         } catch (IOException e) {
             logger.error("Error forwarding HTTP request: {}", e.getMessage());
