@@ -96,7 +96,6 @@ public class ProxyHandler implements Runnable {
 
             String responseLine;
             while ((responseLine = proxyIn.readLine()) != null) {
-                logger.info("out: {}", responseLine);
                 if (responseLine.equals("END_OF_RESPONSE")) {
                     logger.info("Received END_OF_RESPONSE from server. Finishing response processing.");
                     break;
