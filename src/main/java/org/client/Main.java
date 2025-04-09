@@ -18,7 +18,6 @@ public class Main {
         ServerSocket serverSocket = new ServerSocket(PORT);
         logger.info("Proxy client started on port {}", PORT);
         BlockingQueue<Socket> requestQueue = new LinkedBlockingQueue<>();
-        // Start worker threads
         for (int i = 0; i < WORKER_COUNT; i++) {
             new Thread(new ProxyHandler(requestQueue)).start();
         }
