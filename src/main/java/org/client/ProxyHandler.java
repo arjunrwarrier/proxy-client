@@ -15,6 +15,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class ProxyHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(ProxyHandler.class);
+    private static final int READ_TIMEOUT_MS = 3000;
     private static final String PROXY_SERVER_HOST = "proxy-server";
     private static final int PROXY_SERVER_PORT = 9090;
     private final BlockingQueue<Socket> requestQueue;
@@ -36,6 +37,7 @@ public class ProxyHandler implements Runnable {
                         connectionCount+=1;
                         logger.info("Attempting to connect to proxy server  {}:{}", PROXY_SERVER_HOST, PROXY_SERVER_PORT);
                         proxySocket = new Socket(PROXY_SERVER_HOST, PROXY_SERVER_PORT);
+                        proxySocket.setSoTimeout(READ_TIMEOUT_MS);
                         logger.info("Connections made to proxy server.{}", connectionCount);
                     } catch (IOException e) {
                         logger.error("Error connecting to proxy server: {}", e.getMessage());
