@@ -4,18 +4,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.net.MalformedURLException;
 import java.net.Socket;
-import java.net.SocketException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.net.URL;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class ProxyHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(ProxyHandler.class);
-    private static final int READ_TIMEOUT_MS = 3000;
+    private static final int READ_TIMEOUT_MS = 60000;
     private static final String PROXY_SERVER_HOST = "proxy-server";
     private static final int PROXY_SERVER_PORT = 9090;
     private final BlockingQueue<Socket> requestQueue;
@@ -59,21 +55,49 @@ public class ProxyHandler implements Runnable {
              BufferedWriter out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()))) {
 
             String requestLine = in.readLine();
-            if (requestLine == null) return;
-
             logger.info("Processing Request: {}", requestLine);
-
-            String[] tokens = requestLine.split(" ");
-            if (tokens.length < 2) return;
-
-            String method = tokens[0];
-
-            if (method.equalsIgnoreCase("CONNECT") || method.contains("Host:")) {
-                logger.warn("Received HTTPS CONNECT request. Not supported.");
+            if (requestLine == null || requestLine.isEmpty()) {
+                logger.warn("Received empty or null request line from client {}. Closing connection.", clientSocket.getRemoteSocketAddress());
                 return;
             }
-            logger.info("IN HTTP");
-            logger.info("Received request: {}",requestLine);
+            String[] tokens = requestLine.split(" ");
+            if (tokens.length < 3) {
+                logger.warn("Invalid request line format ({} parts): {}", tokens.length, requestLine);
+                return;
+            }
+            String method = tokens[0];
+            String urlString = tokens[1];
+            URL requestedUrl;
+            try {
+                requestedUrl = new URL(urlString);
+                String head = requestedUrl.getProtocol();
+                String host = requestedUrl.getHost();
+                if (method.equalsIgnoreCase("CONNECT")) {
+                    logger.warn("Received HTTPS CONNECT request. Not supported.");
+                    return;
+                }
+                if (!head.equalsIgnoreCase("http") && !head.equalsIgnoreCase("https")) {
+                    logger.warn("Unsupported URL received: {}", head);
+                    return;
+                }
+
+                if (host == null || host.trim().isEmpty()) {
+                    logger.warn("URL is missing host: {}", urlString);
+                    return;
+                }
+                if (!host.contains(".")) {
+                    if (!host.equalsIgnoreCase("localhost")) {
+                        logger.warn("Host '{}' does not contain a dot and is not localhost. Might not be a valid domain.", host);
+                        return;
+                    }
+                }
+
+                logger.debug("valid url recieved: {}", urlString);
+
+            } catch (MalformedURLException e) {
+                logger.warn("not a valid url: {} error: {}", urlString, e.getMessage());
+                return;
+            }
             forwardHttpRequest(requestLine, in, out);
 
         } catch (IOException e) {
@@ -111,7 +135,7 @@ public class ProxyHandler implements Runnable {
             if (proxySocket != null && !proxySocket.isClosed()) {
                 try {
                     proxySocket.close();
-                    logger.warn("Closed broken proxy socket. PLEASE TRY AGAIN...");
+                    logger.error("Closed broken proxy socket. PLEASE TRY AGAIN...");
                 } catch (IOException ex) {
                     logger.error("Error closing broken proxy socket: {}", ex.getMessage());
                 }
