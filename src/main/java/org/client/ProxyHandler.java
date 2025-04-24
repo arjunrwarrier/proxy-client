@@ -12,7 +12,7 @@ import java.util.concurrent.BlockingQueue;
 public class ProxyHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(ProxyHandler.class);
     private static final int READ_TIMEOUT_MS = 60000;
-    private static final String PROXY_SERVER_HOST = "localhost";
+    private static final String PROXY_SERVER_HOST = "proxy-server";
     private static final int PROXY_SERVER_PORT = 9090;
     private final BlockingQueue<Socket> requestQueue;
     private Socket proxySocket = null;
