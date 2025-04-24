@@ -51,8 +51,10 @@ public class ProxyHandler implements Runnable {
     }
 
     private void processRequest(Socket clientSocket) {
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-             BufferedWriter out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()))) {
+        try {
+            OutputStream clientOutStream = null;
+            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            clientOutStream = clientSocket.getOutputStream();
 
             String requestLine = in.readLine();
             logger.info("Processing Request: {}", requestLine);
@@ -98,7 +100,7 @@ public class ProxyHandler implements Runnable {
                 logger.warn("not a valid url: {} error: {}", urlString, e.getMessage());
                 return;
             }
-            forwardHttpRequest(requestLine, in, out);
+            forwardHttpRequest(requestLine, in, clientOutStream);
 
         } catch (IOException e) {
             logger.error("Exception processing request: {}", e.getMessage());
@@ -106,11 +108,12 @@ public class ProxyHandler implements Runnable {
     }
 
 
-    private void forwardHttpRequest(String requestLine, BufferedReader in, BufferedWriter out) throws IOException {
+    private void forwardHttpRequest(String requestLine, BufferedReader in, OutputStream clientOutStream) throws IOException {
         logger.info("Forwarding HTTP request");
         try{
             BufferedWriter proxyOut = new BufferedWriter(new OutputStreamWriter(proxySocket.getOutputStream()));
             BufferedReader proxyIn = new BufferedReader(new InputStreamReader(proxySocket.getInputStream()));
+            InputStream proxyInWriter = new BufferedInputStream(proxySocket.getInputStream());
             proxyOut.write(requestLine + "\r\n");
 
             String headerLine;
@@ -120,16 +123,57 @@ public class ProxyHandler implements Runnable {
             proxyOut.write("\r\n");
             proxyOut.flush();
 
-            String responseLine;
-            while ((responseLine = proxyIn.readLine()) != null) {
-                if (responseLine.equals("END_OF_RESPONSE")) {
-                    logger.info("Received END_OF_RESPONSE from server. Finishing response processing.");
-                    break;
+            StringBuilder responseHeaders = new StringBuilder();
+            int contentLength = -1;
+            boolean isChunked = false;
+
+            while ((headerLine = proxyIn.readLine()) != null && !headerLine.isEmpty()) {
+                responseHeaders.append(headerLine).append("\r\n");
+                String lowerCaseHeader = headerLine.toLowerCase();
+                if (lowerCaseHeader.startsWith("content-length:")) {
+                    try {
+                        contentLength = Integer.parseInt(lowerCaseHeader.split(":")[1].trim());
+                        logger.info("Received Content-Length: {}", contentLength);
+                        isChunked = false;
+                    } catch (NumberFormatException e) {
+                        logger.warn("Invalid Content-Length value: {}", lowerCaseHeader.split(":")[1].trim());
+                        contentLength = -1;
+                    }
+                } else if (lowerCaseHeader.startsWith("transfer-encoding:") && lowerCaseHeader.contains("chunked")) {
+                    isChunked = true;
+                    contentLength = -1;
+                    logger.info("Received Transfer-Encoding: chunked");
                 }
-                out.write(responseLine + "\r\n");
             }
-            out.flush();
-            logger.info("Completed HTTP request");
+            responseHeaders.append("\r\n");
+
+            clientOutStream.write(responseHeaders.toString().getBytes());
+            clientOutStream.flush();
+
+            if (contentLength != -1) {
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                int totalBytesRead = 0;
+                while (totalBytesRead < contentLength && (bytesRead = proxyInWriter.read(buffer, 0, Math.min(buffer.length, contentLength - totalBytesRead))) != -1) {
+
+                    clientOutStream.write(buffer, 0, bytesRead);
+                    totalBytesRead += bytesRead;
+                }
+                logger.info("Forwarded {} bytes of response body (based on Content-Length)", totalBytesRead);
+                clientOutStream.flush();
+
+            } else {
+                logger.warn("No Content-Length header received, reading until stream ends.");
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = proxyInWriter.read(buffer)) != -1) {
+                    clientOutStream.write(buffer, 0, bytesRead);
+                }
+                logger.info("Forwarded response body until stream ended.");
+                clientOutStream.flush();
+            }
+
+            logger.info("Completed HTTP request forwarding.");
         } catch (IOException e) {
             logger.error("Error forwarding HTTP request: {}", e.getMessage());
             if (proxySocket != null && !proxySocket.isClosed()) {
