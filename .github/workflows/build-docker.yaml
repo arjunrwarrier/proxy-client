@@ -10,7 +10,7 @@ jobs:
         uses: actions/checkout@v4
       - name: build image
         run:
-          docker build ./proxy-client/ -t notwarrier/proxy-client:latest
+          docker build . -t notwarrier/proxy-client:latest
       - name: push image to docker hub
         run:
           docker login -u notwarrier -p ${{ secrets.DOCKER_HUB_TOKEN }}
